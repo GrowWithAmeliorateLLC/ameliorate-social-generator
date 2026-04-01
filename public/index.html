@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Social Post Generator — Ameliorate</title>
+  <link rel="icon" href="https://storage.googleapis.com/msgsndr/duyQkjFepxRU10hrDn9s/media/68cdaf6b5f00dc30ea724bde.svg" type="image/svg+xml" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --lime:     #c9e265;
+      --seafoam:  #b8dfbe;
+      --lavender: #f4edf7;
+      --ink:      #0a0a0a;
+      --muted:    #666672;
+      --pink:     #e8b4f0;
+      --purple:   #7c4dff;
+      --white:    #ffffff;
+      --border:   #e2daea;
+      --card-bg:  #ffffff;
+      --success:  #22c55e;
+      --error:    #ef4444;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--lavender);
+      background-image:
+        radial-gradient(ellipse 70% 60% at 10% 0%, rgba(201,226,101,0.22) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 95% 100%, rgba(184,223,190,0.25) 0%, transparent 55%),
+        radial-gradient(ellipse 40% 40% at 55% 50%, rgba(232,180,240,0.12) 0%, transparent 60%);
+      min-height: 100vh;
+      color: var(--ink);
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 40px;
+      background: rgba(255,255,255,0.65);
+      backdrop-filter: blur(10px);
+      border-bottom: 1.5px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 12px; }
+    .logo-wrap img { height: 34px; width: auto; }
+    .header-divider { width: 1px; height: 24px; background: var(--border); }
+    .app-name { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 14px; letter-spacing: 0.04em; color: var(--ink); text-transform: uppercase; }
+    .badge { background: var(--ink); color: var(--lime); font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 50px; display: flex; align-items: center; gap: 5px; }
+    .badge::before { content: ''; width: 6px; height: 6px; background: var(--lime); border-radius: 50%; animation: blink 1.5s ease-in-out infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    main { max-width: 900px; margin: 0 auto; padding: 48px 24px 80px; }
+    .hero { text-align: center; margin-bottom: 48px; }
+    .hero h1 { font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin-bottom: 14px; }
+    .gradient-text { background: linear-gradient(110deg, #8cc63f 0%, var(--seafoam) 50%, var(--purple) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { font-size: 16px; color: var(--muted); max-width: 520px; margin: 0 auto; line-height: 1.6; }
+    .card { background: var(--card-bg); border: 1.5px solid var(--border); border-radius: 20px; padding: 32px; box-shadow: 0 2px 20px rgba(10,10,10,0.06); transition: box-shadow 0.2s ease; }
+    .card:hover { box-shadow: 0 4px 32px rgba(10,10,10,0.1); }
+    .form-grid { display: grid; gap: 20px; }
+    .field { display: flex; flex-direction: column; gap: 7px; position: relative; }
+    label { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink); }
+    .field-hint { font-size: 12px; color: var(--muted); margin-top: -3px; }
+    input[type="text"], input[type="url"] { width: 100%; padding: 13px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 15px; color: var(--ink); background: #fafafa; transition: border-color 0.2s, box-shadow 0.2s; outline: none; }
+    input[type="text"]:focus, input[type="url"]:focus { border-color: var(--lime); background: var(--white); box-shadow: 0 0 0 3px rgba(201,226,101,0.25); }
+    .autocomplete-wrap { position: relative; }
+    .autocomplete-wrap input { padding-right: 40px; }
+    .search-spinner { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+    .autocomplete-wrap.searching .search-spinner { display: block; }
+    .dropdown { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; box-shadow: 0 8px 28px rgba(10,10,10,0.12); max-height: 220px; overflow-y: auto; z-index: 50; display: none; }
+    .dropdown.open { display: block; }
+    .dropdown-item { padding: 11px 16px; cursor: pointer; border-bottom: 1px solid #f0edf5; transition: background 0.15s; }
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:hover { background: var(--lavender); }
+    .dropdown-item .item-name { font-weight: 600; font-size: 14px; color: var(--ink); }
+    .dropdown-item .item-path { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .dropdown-empty { padding: 14px 16px; color: var(--muted); font-size: 13px; text-align: center; }
+    .btn-primary { width: 100%; padding: 15px; background: linear-gradient(135deg, var(--lime), var(--seafoam)); border: none; border-radius: 12px; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 14px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink); cursor: pointer; transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s; box-shadow: 0 2px 12px rgba(201,226,101,0.35); display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 8px; }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(201,226,101,0.45); }
+    .btn-primary:active:not(:disabled) { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    #loading { display: none; text-align: center; padding: 48px 24px; }
+    .loading-ring { width: 52px; height: 52px; border: 3px solid var(--border); border-top-color: var(--lime); border-right-color: var(--seafoam); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 15px; color: var(--ink); margin-bottom: 6px; }
+    .loading-sub { font-size: 13px; color: var(--muted); }
+    #results { display: none; }
+    .results-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+    .results-title { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 18px; }
+    .clickup-link { display: inline-flex; align-items: center; gap: 7px; background: var(--ink); color: var(--lime); font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none; padding: 9px 16px; border-radius: 50px; transition: opacity 0.15s, transform 0.15s; }
+    .clickup-link:hover { opacity: 0.85; transform: translateY(-1px); }
+    .posts-grid { display: grid; gap: 20px; }
+    .post-card { background: var(--white); border: 1.5px solid var(--border); border-radius: 18px; overflow: hidden; box-shadow: 0 2px 16px rgba(10,10,10,0.05); animation: slideUp 0.4s ease both; }
+    .post-card:nth-child(2) { animation-delay: 0.08s; }
+    .post-card:nth-child(3) { animation-delay: 0.16s; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .post-card-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid #f0edf5; background: linear-gradient(135deg, rgba(201,226,101,0.08), rgba(184,223,190,0.08)); }
+    .post-number { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+    .post-platform { font-size: 11px; font-weight: 600; color: var(--purple); background: rgba(124,77,255,0.08); padding: 3px 10px; border-radius: 50px; }
+    .post-card-body { padding: 20px; }
+    .post-hook { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 15px; line-height: 1.35; color: var(--ink); margin-bottom: 12px; padding-left: 14px; border-left: 3px solid var(--lime); }
+    .post-caption { font-size: 14px; line-height: 1.7; color: #333; margin-bottom: 12px; white-space: pre-wrap; }
+    .post-cta { font-size: 13px; font-weight: 600; color: var(--purple); margin-bottom: 14px; }
+    .post-hashtags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .hashtag { font-size: 11px; font-weight: 600; color: var(--purple); background: rgba(124,77,255,0.08); padding: 3px 9px; border-radius: 50px; }
+    .post-actions { display: flex; gap: 10px; }
+    .btn-copy { display: flex; align-items: center; gap: 6px; padding: 9px 16px; border: 1.5px solid var(--border); border-radius: 9px; background: transparent; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); cursor: pointer; transition: all 0.15s; }
+    .btn-copy:hover { border-color: var(--lime); background: rgba(201,226,101,0.1); }
+    .btn-copy.copied { border-color: var(--success); background: rgba(34,197,94,0.1); color: var(--success); }
+    .error-box { background: rgba(239,68,68,0.08); border: 1.5px solid rgba(239,68,68,0.25); border-radius: 12px; padding: 14px 18px; color: #c0392b; font-size: 14px; display: none; margin-top: 16px; }
+    .toast { position: fixed; bottom: 28px; right: 28px; background: var(--ink); color: var(--lime); font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 20px; border-radius: 50px; box-shadow: 0 4px 20px rgba(10,10,10,0.2); transform: translateY(80px); opacity: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 999; pointer-events: none; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .btn-reset { display: inline-flex; align-items: center; gap: 7px; padding: 10px 18px; border: 1.5px solid var(--border); border-radius: 50px; background: transparent; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); cursor: pointer; transition: all 0.15s; margin-top: 24px; }
+    .btn-reset:hover { border-color: var(--ink); color: var(--ink); }
+    .section-gap { margin-top: 32px; }
+    @media (max-width: 600px) { header { padding: 14px 20px; } main { padding: 32px 16px 60px; } .card { padding: 22px 18px; } .post-card-body { padding: 16px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-wrap">
+      <img src="https://storage.googleapis.com/msgsndr/duyQkjFepxRU10hrDn9s/media/68cdaf6b5f00dc30ea724bde.svg" alt="Ameliorate" />
+      <div class="header-divider"></div>
+      <span class="app-name">Social Post Generator</span>
+    </div>
+    <div class="badge">AI Powered</div>
+  </header>
+  <main>
+    <div class="hero">
+      <h1>Generate <span class="gradient-text">3 Social Posts</span><br />in 30 seconds flat.</h1>
+      <p>Drop a client URL, pick their ClickUp list, and get three parent-ready social media posts — auto-filed as tasks.</p>
+    </div>
+    <div class="card" id="form-section">
+      <div class="form-grid">
+        <div class="field">
+          <label for="url-input">Client Website URL</label>
+          <span class="field-hint">Works with JavaScript-rendered sites too</span>
+          <input type="url" id="url-input" placeholder="https://yourclient.com" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="client-input">Client Name / ClickUp List</label>
+          <span class="field-hint">Type to search your ClickUp workspace (e.g. "West Chicago" or "TBH_MountainView")</span>
+          <div class="autocomplete-wrap" id="autocomplete-wrap">
+            <input type="text" id="client-input" placeholder="Search lists…" autocomplete="off" />
+            <div class="search-spinner"></div>
+            <div class="dropdown" id="dropdown"></div>
+          </div>
+          <input type="hidden" id="list-id" />
+          <input type="hidden" id="client-name" />
+        </div>
+        <div class="error-box" id="form-error"></div>
+        <button class="btn-primary" id="generate-btn" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Generate Posts
+        </button>
+      </div>
+    </div>
+    <div id="loading" class="section-gap">
+      <div class="loading-ring"></div>
+      <p class="loading-text" id="loading-text">Reading website…</p>
+      <p class="loading-sub">This takes about 10–20 seconds</p>
+    </div>
+    <div id="results" class="section-gap">
+      <div class="results-header">
+        <span class="results-title">✨ Posts Ready</span>
+        <a href="#" id="clickup-task-link" class="clickup-link" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l3.5 3.5 5.5-6 5.5 6L21 12"/></svg>
+          View in ClickUp
+        </a>
+      </div>
+      <div class="posts-grid" id="posts-container"></div>
+      <button class="btn-reset" id="reset-btn">↩ Generate New Posts</button>
+    </div>
+  </main>
+  <div class="toast" id="toast">Copied!</div>
+  <script>
+    let selectedListId = null, selectedListName = null, searchTimeout = null;
+    const urlInput = document.getElementById('url-input');
+    const clientInput = document.getElementById('client-input');
+    const generateBtn = document.getElementById('generate-btn');
+    const autocompleteWrap = document.getElementById('autocomplete-wrap');
+    const dropdown = document.getElementById('dropdown');
+    const formError = document.getElementById('form-error');
+    const formSection = document.getElementById('form-section');
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
+    const results = document.getElementById('results');
+    const postsContainer = document.getElementById('posts-container');
+    const resetBtn = document.getElementById('reset-btn');
+    const clickupLink = document.getElementById('clickup-task-link');
+    const toast = document.getElementById('toast');
+
+    function checkReady() {
+      generateBtn.disabled = !(urlInput.value.trim().startsWith('http') && !!selectedListId);
+    }
+    urlInput.addEventListener('input', checkReady);
+
+    clientInput.addEventListener('input', () => {
+      const q = clientInput.value.trim();
+      selectedListId = null; selectedListName = null; checkReady();
+      if (searchTimeout) clearTimeout(searchTimeout);
+      if (q.length < 2) { closeDropdown(); return; }
+      searchTimeout = setTimeout(() => searchLists(q), 300);
+    });
+
+    async function searchLists(q) {
+      autocompleteWrap.classList.add('searching');
+      try {
+        const res = await fetch(`/api/search-lists?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (!res.ok || data.error) { showDropdownEmpty('Search error. Check ClickUp credentials.'); return; }
+        if (!Array.isArray(data) || data.length === 0) { showDropdownEmpty('No lists found for "' + q + '"'); return; }
+        renderDropdown(data);
+      } catch { showDropdownEmpty('Network error'); }
+      finally { autocompleteWrap.classList.remove('searching'); }
+    }
+
+    function renderDropdown(items) {
+      dropdown.innerHTML = '';
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'dropdown-item';
+        div.innerHTML = `<div class="item-name">${escHtml(item.name)}</div><div class="item-path">${escHtml(item.path)}</div>`;
+        div.addEventListener('mousedown', e => { e.preventDefault(); selectList(item); });
+        dropdown.appendChild(div);
+      });
+      dropdown.classList.add('open');
+    }
+
+    function showDropdownEmpty(msg) {
+      dropdown.innerHTML = `<div class="dropdown-empty">${msg}</div>`;
+      dropdown.classList.add('open');
+    }
+
+    function closeDropdown() { dropdown.classList.remove('open'); }
+
+    function selectList(item) {
+      selectedListId = item.id; selectedListName = item.name;
+      clientInput.value = item.name;
+      closeDropdown(); checkReady();
+    }
+
+    clientInput.addEventListener('blur', () => setTimeout(closeDropdown, 150));
+
+    generateBtn.addEventListener('click', async () => {
+      hideError();
+      setLoading(true, 'Reading website…');
+      try {
+        const tid = setTimeout(() => setLoadingText('Generating posts with AI…'), 6000);
+        const res = await fetch('/api/generate-posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: urlInput.value.trim(), listId: selectedListId, clientName: selectedListName })
+        });
+        clearTimeout(tid);
+        const data = await res.json();
+        if (!res.ok || data.error) { setLoading(false); showError(data.error || 'Something went wrong.'); return; }
+        setLoading(false);
+        renderResults(data);
+      } catch { setLoading(false); showError('Network error. Please check your connection.'); }
+    });
+
+    function renderResults(data) {
+      if (data.parentTask?.url) clickupLink.href = data.parentTask.url;
+      postsContainer.innerHTML = '';
+      data.posts.forEach((post, i) => {
+        const fullText = `${post.hook}\n\n${post.caption}\n\n${post.cta}\n\n${post.hashtags.join(' ')}`;
+        const card = document.createElement('div');
+        card.className = 'post-card';
+        card.innerHTML = `
+          <div class="post-card-header">
+            <span class="post-number">Post ${i + 1} of 3</span>
+            <span class="post-platform">Facebook / Instagram</span>
+          </div>
+          <div class="post-card-body">
+            <p class="post-hook">${escHtml(post.hook)}</p>
+            <p class="post-caption">${escHtml(post.caption)}</p>
+            <p class="post-cta">→ ${escHtml(post.cta)}</p>
+            <div class="post-hashtags">${post.hashtags.map(h => `<span class="hashtag">${escHtml(h)}</span>`).join('')}</div>
+            <div class="post-actions">
+              <button class="btn-copy" data-text="${escAttr(fullText)}">📋 Copy Post</button>
+              <button class="btn-copy" data-text="${escAttr(post.hashtags.join(' '))}"># Hashtags</button>
+            </div>
+          </div>`;
+        postsContainer.appendChild(card);
+      });
+      postsContainer.querySelectorAll('.btn-copy').forEach(btn => {
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(btn.getAttribute('data-text')).then(() => {
+            const orig = btn.innerHTML;
+            btn.classList.add('copied'); btn.innerHTML = '✓ Copied!';
+            showToast('Copied to clipboard!');
+            setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = orig; }, 2000);
+          });
+        });
+      });
+      formSection.style.display = 'none';
+      results.style.display = 'block';
+    }
+
+    resetBtn.addEventListener('click', () => {
+      results.style.display = 'none'; formSection.style.display = 'block';
+      urlInput.value = ''; clientInput.value = '';
+      selectedListId = null; selectedListName = null;
+      checkReady(); hideError();
+    });
+
+    function setLoading(show, text = '') { loading.style.display = show ? 'block' : 'none'; formSection.style.display = show ? 'none' : 'block'; if (text) loadingText.textContent = text; }
+    function setLoadingText(t) { loadingText.textContent = t; }
+    function showError(msg) { formError.textContent = msg; formError.style.display = 'block'; }
+    function hideError() { formError.style.display = 'none'; }
+    function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2500); }
+    function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/\n/g,'&#10;'); }
+  </script>
+</body>
+</html>

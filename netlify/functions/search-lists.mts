@@ -31,9 +31,7 @@ export default async (req: Request, _context: Context) => {
         .map((r: any) => ({
           id: r.id,
           name: r.name,
-          path: r.folder?.name
-            ? `${r.space?.name ?? ""} > ${r.folder.name} > ${r.name}`
-            : `${r.space?.name ?? ""} > ${r.name}`,
+          path: r.folder?.name ? `${r.space?.name ?? ""} › ${r.folder.name} › ${r.name}` : `${r.space?.name ?? ""} › ${r.name}`,
         }));
       return new Response(JSON.stringify(lists), { headers: { "Content-Type": "application/json" } });
     }
@@ -60,46 +58,35 @@ async function searchHierarchy(token: string, workspaceId: string, query: string
 
   const { spaces = [] } = await spacesRes.json();
 
-  await Promise.all(
-    spaces.map(async (space: any) => {
-      const fRes = await fetch(
-        `https://api.clickup.com/api/v2/space/${space.id}/folder?archived=false`,
-        { headers: { Authorization: token } }
-      );
-      if (fRes.ok) {
-        const { folders = [] } = await fRes.json();
-        await Promise.all(
-          folders.map(async (folder: any) => {
-            const lRes = await fetch(
-              `https://api.clickup.com/api/v2/folder/${folder.id}/list?archived=false`,
-              { headers: { Authorization: token } }
-            );
-            if (lRes.ok) {
-              const { lists = [] } = await lRes.json();
-              lists
-                .filter((l: any) => l.name.toLowerCase().includes(lq))
-                .forEach((l: any) =>
-                  matches.push({ id: l.id, name: l.name, path: `${space.name} > ${folder.name} > ${l.name}` })
-                );
-            }
-          })
+  await Promise.all(spaces.map(async (space: any) => {
+    const fRes = await fetch(
+      `https://api.clickup.com/api/v2/space/${space.id}/folder?archived=false`,
+      { headers: { Authorization: token } }
+    );
+    if (fRes.ok) {
+      const { folders = [] } = await fRes.json();
+      await Promise.all(folders.map(async (folder: any) => {
+        const lRes = await fetch(
+          `https://api.clickup.com/api/v2/folder/${folder.id}/list?archived=false`,
+          { headers: { Authorization: token } }
         );
-      }
-
-      const flRes = await fetch(
-        `https://api.clickup.com/api/v2/space/${space.id}/list?archived=false`,
-        { headers: { Authorization: token } }
-      );
-      if (flRes.ok) {
-        const { lists = [] } = await flRes.json();
-        lists
-          .filter((l: any) => l.name.toLowerCase().includes(lq))
-          .forEach((l: any) =>
-            matches.push({ id: l.id, name: l.name, path: `${space.name} > ${l.name}` })
-          );
-      }
-    })
-  );
+        if (lRes.ok) {
+          const { lists = [] } = await lRes.json();
+          lists.filter((l: any) => l.name.toLowerCase().includes(lq))
+            .forEach((l: any) => matches.push({ id: l.id, name: l.name, path: `${space.name} › ${folder.name} › ${l.name}` }));
+        }
+      }));
+    }
+    const flRes = await fetch(
+      `https://api.clickup.com/api/v2/space/${space.id}/list?archived=false`,
+      { headers: { Authorization: token } }
+    );
+    if (flRes.ok) {
+      const { lists = [] } = await flRes.json();
+      lists.filter((l: any) => l.name.toLowerCase().includes(lq))
+        .forEach((l: any) => matches.push({ id: l.id, name: l.name, path: `${space.name} › ${l.name}` }));
+    }
+  }));
 
   return matches;
 }
