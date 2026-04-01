@@ -1,5 +1,7 @@
 import type { Context } from "@netlify/functions";
 
+const TEXT_CUSTOM_FIELD_ID = "93af8cc2-fa4a-4b54-b482-8451264eb4a2";
+
 export default async (req: Request, _context: Context) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -43,7 +45,7 @@ export default async (req: Request, _context: Context) => {
 
     const contentSnippet = pageContent.substring(0, 5000);
 
-    // 2. Generate 3 posts via Claude API
+    // 2. Generate 3 posts + content theme via Claude API
     const anthropicKey = Netlify.env.get("ANTHROPIC_API_KEY");
     const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -71,18 +73,23 @@ RULES:
 - No generic phrases like "unlock potential" or "don't miss out"
 - Hashtags should be locally relevant where possible
 
+Also identify 1–2 short content theme words that best describe the main topic of this page (e.g. BIRTHDAY, CODING, SUMMER CAMP, AFTER SCHOOL, ROBOTICS, STEM, PARTIES). Use ALL CAPS, 1–3 words max, keep it punchy.
+
 WEBSITE CONTENT:
 ${contentSnippet}
 
-Return ONLY a valid JSON array—no markdown fences, no explanation. Schema:
-[
-  {
-    "hook": "<opening line, max 12 words, punchy>",
-    "caption": "<body of post, 100-140 words>",
-    "cta": "<one clear call-to-action sentence>",
-    "hashtags": ["#tag1","#tag2","#tag3","#tag4","#tag5","#tag6"]
-  }
-]`,
+Return ONLY a valid JSON object—no markdown fences, no explanation. Schema:
+{
+  "theme": "BIRTHDAY PARTIES",
+  "posts": [
+    {
+      "hook": "<opening line, max 12 words, punchy>",
+      "caption": "<body of post, 100-140 words>",
+      "cta": "<one clear call-to-action sentence>",
+      "hashtags": ["#tag1","#tag2","#tag3","#tag4","#tag5","#tag6"]
+    }
+  ]
+}`,
         }],
       }),
     });
@@ -98,10 +105,13 @@ Return ONLY a valid JSON array—no markdown fences, no explanation. Schema:
     const claudeData = await claudeRes.json();
     const rawText: string = claudeData.content[0].text;
 
+    let theme = "GENERAL";
     let posts: any[];
     try {
       const cleaned = rawText.replace(/```json|```/g, "").trim();
-      posts = JSON.parse(cleaned);
+      const parsed = JSON.parse(cleaned);
+      theme = parsed.theme?.toUpperCase().trim() || "GENERAL";
+      posts = parsed.posts;
       if (!Array.isArray(posts) || posts.length < 3) throw new Error("Bad format");
     } catch {
       return new Response(
@@ -110,15 +120,15 @@ Return ONLY a valid JSON array—no markdown fences, no explanation. Schema:
       );
     }
 
-    // 3. Create ClickUp parent task
+    // 3. Create ClickUp parent task — "SOCIAL POSTS [THEME]"
     const clickupToken = Netlify.env.get("CLICKUP_API_TOKEN");
-    const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const parentTaskName = `SOCIAL POSTS ${theme}`;
 
     const parentRes = await fetch(`https://api.clickup.com/api/v2/list/${listId}/task`, {
       method: "POST",
       headers: { Authorization: clickupToken ?? "", "Content-Type": "application/json" },
       body: JSON.stringify({
-        name: `📱 Social Posts — ${today}`,
+        name: parentTaskName,
         description: `3 social media posts auto-generated from:\n${url}\n\nGenerated for: ${clientName}`,
         priority: 3,
       }),
@@ -134,22 +144,31 @@ Return ONLY a valid JSON array—no markdown fences, no explanation. Schema:
 
     const parentTask = await parentRes.json();
 
-    // 4. Create 3 subtasks
+    // 4. Create 3 subtasks — POST 1, POST 2, POST 3
+    // Caption goes into the TEXT custom field; full post also in description
     const createdSubtasks: Array<{ id: string; url: string; name: string }> = [];
 
     for (let i = 0; i < posts.length; i++) {
       const post = posts[i];
       const fullCaption = [post.hook, "", post.caption, "", post.cta, "", post.hashtags.join(" ")].join("\n");
+
       const subRes = await fetch(`https://api.clickup.com/api/v2/list/${listId}/task`, {
         method: "POST",
         headers: { Authorization: clickupToken ?? "", "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: `Post ${i + 1}: ${post.hook.substring(0, 55)}`,
+          name: `POST ${i + 1}`,
           description: fullCaption,
           parent: parentTask.id,
           priority: 3,
+          custom_fields: [
+            {
+              id: TEXT_CUSTOM_FIELD_ID,
+              value: fullCaption,
+            },
+          ],
         }),
       });
+
       if (subRes.ok) {
         const sub = await subRes.json();
         createdSubtasks.push({ id: sub.id, url: sub.url, name: sub.name });
@@ -157,7 +176,13 @@ Return ONLY a valid JSON array—no markdown fences, no explanation. Schema:
     }
 
     return new Response(
-      JSON.stringify({ success: true, posts, parentTask: { id: parentTask.id, url: parentTask.url, name: parentTask.name }, subtasks: createdSubtasks }),
+      JSON.stringify({
+        success: true,
+        theme,
+        posts,
+        parentTask: { id: parentTask.id, url: parentTask.url, name: parentTask.name },
+        subtasks: createdSubtasks,
+      }),
       { headers: { "Content-Type": "application/json" } }
     );
   } catch (err: any) {
